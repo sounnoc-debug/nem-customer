@@ -1,0 +1,100 @@
+:root {
+  --bg: #FBF3E7;
+  --paper: #FFFFFF;
+  --ink: #2B1B12;
+  --chili: #C5391E;
+  --chili-dark: #9C2C16;
+  --herb: #4B6B43;
+  --line: #E4D6C2;
+  --pending: #B6862C;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  padding-bottom: 70px; /* chỗ cho bottom nav */
+}
+
+h1, h2, h3, .display { font-family: Georgia, serif; letter-spacing: -0.01em; margin: 0; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+.page { padding: 16px; }
+
+.topbar-app {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px; background: var(--paper); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+
+.category-pills { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; }
+.pill {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-size: 13px;
+  background: var(--paper); border: 1px solid var(--line); cursor: pointer; white-space: nowrap;
+}
+.pill.active { background: var(--chili); color: white; border-color: var(--chili); }
+
+.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 16px; }
+.product-card {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+}
+.product-card .img { width: 100%; height: 110px; background: #EFE2CF; object-fit: cover; }
+.product-card .info { padding: 10px; }
+.product-card .name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.product-card .price { font-size: 14px; color: var(--chili-dark); font-weight: 700; }
+.product-card .price s { color: #8A7158; font-weight: 400; margin-right: 4px; font-size: 12px; }
+.badge-hot { background: var(--chili); color: white; font-size: 10px; padding: 2px 6px; border-radius: 6px; }
+
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px; background: var(--paper); border-top: 1px solid var(--line);
+  display: flex; justify-content: space-around; padding: 10px 0; z-index: 20;
+}
+.bottom-nav a { font-size: 11px; text-align: center; color: #8A7158; }
+.bottom-nav a.active { color: var(--chili); font-weight: 600; }
+.bottom-nav .icon { font-size: 20px; display: block; margin-bottom: 2px; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+
+.btn {
+  background: var(--chili); color: white; border: none; padding: 13px 18px;
+  border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
+}
+.btn:disabled { opacity: 0.5; }
+.btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+input, select, textarea {
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px;
+  font-size: 15px; width: 100%; background: white; color: var(--ink);
+}
+
+.cart-row { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.cart-row img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: #EFE2CF; }
+.qty-control { display: flex; align-items: center; gap: 8px; }
+.qty-control button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: white; }
+
+.ticket-status {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.status-pending { background: #FBE9CF; color: var(--pending); }
+.status-cooking { background: #FDE3D8; color: var(--chili-dark); }
+.status-delivering { background: #E2EAE0; color: var(--herb); }
+.status-done { background: #DCEBDA; color: var(--herb); }
+.status-cancelled { background: #F0E0DC; color: #8A7158; }
+
+.error-text { color: var(--chili); font-size: 13px; margin-top: 8px; }
+
+.order-tracker { display: flex; justify-content: space-between; margin: 16px 0; }
+.order-tracker .step { flex: 1; text-align: center; font-size: 11px; color: #8A7158; position: relative; }
+.order-tracker .step.done { color: var(--herb); font-weight: 600; }
+.order-tracker .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); margin: 0 auto 6px; }
+.order-tracker .step.done .dot { background: var(--herb); }
