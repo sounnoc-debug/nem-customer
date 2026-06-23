@@ -79,7 +79,7 @@ export default function Home() {
   return (
     <>
       <div className="topbar-app">
-        <h1 style={{ fontSize: 19 }}>🌿 Quán Nem</h1>
+        <img src="/logo.png" alt="Logo Sounouc" style={{ height: 30 }} />
         <a href="/cart" style={{ fontSize: 20 }}>🛒</a>
       </div>
 

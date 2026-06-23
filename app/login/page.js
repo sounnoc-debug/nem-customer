@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <div className="page">
-      <h1 style={{ fontSize: 22, marginBottom: 4 }}>🌿 Đăng nhập</h1>
+      <img src="/logo.png" alt="Logo" style={{ height: 36, marginBottom: 8 }} />
       <p style={{ fontSize: 13, color: '#8A7158', marginBottom: 20 }}>Đăng nhập để đặt hàng và tích điểm</p>
       <form onSubmit={handleLogin}>
         <label style={{ fontSize: 13 }}>Email</label>
