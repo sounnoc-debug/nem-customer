@@ -29,9 +29,13 @@ export default function SignupPage() {
     return (
       <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
         <p style={{ fontSize: 40 }}>📩</p>
-        <h2 style={{ fontSize: 18 }}>Đăng ký thành công!</h2>
-        <p style={{ fontSize: 13, color: '#8A7158' }}>Nếu quán yêu cầu xác nhận email, hãy kiểm tra hộp thư. Nếu không, bạn có thể đăng nhập ngay.</p>
-        <a href="/login" className="btn" style={{ display: 'inline-block', marginTop: 16 }}>Đăng nhập ngay</a>
+        <h2 style={{ fontSize: 18 }}>Kiểm tra email của bạn!</h2>
+        <p style={{ fontSize: 13, color: '#8A7158', lineHeight: 1.6 }}>
+          Chúng tôi đã gửi 1 email xác nhận đến <strong>{email}</strong>.<br />
+          Bạn cần bấm vào link trong email đó trước khi đăng nhập được.
+          Nếu không thấy, hãy kiểm tra thêm mục Spam/Quảng cáo.
+        </p>
+        <a href="/login" className="btn" style={{ display: 'inline-block', marginTop: 16 }}>Tôi đã xác nhận, đăng nhập ngay</a>
       </div>
     )
   }
