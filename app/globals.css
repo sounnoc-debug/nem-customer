@@ -1,11 +1,11 @@
 :root {
-  --bg: #FBF3E7;
+  --bg: #F3EAD8;          /* be */
   --paper: #FFFFFF;
   --ink: #2B1B12;
-  --chili: #C5391E;
-  --chili-dark: #9C2C16;
-  --herb: #4B6B43;
-  --line: #E4D6C2;
+  --chili: #7A2331;        /* đỏ đô */
+  --chili-dark: #591620;
+  --herb: #2F6B3D;         /* xanh lục */
+  --line: #DCC9A8;
   --pending: #B6862C;
 }
 
