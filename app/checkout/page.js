@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabaseClient'
 import { useCart } from '@/context/CartContext'
-import { SHOP_LOCATION, haversineDistanceKm, calcShippingFee, geocodeAddress } from '@/lib/shipping'
+import { SHOP_LOCATION, haversineDistanceKm, calcShippingFee } from '@/lib/shipping'
 
 const ShippingMap = dynamic(() => import('@/components/ShippingMap'), { ssr: false })
 
-const FREE_SHIP_THRESHOLD = 500000 // ★ đơn từ giá này được miễn phí ship, đổi tại đây nếu muốn
+const FREE_SHIP_THRESHOLD = 150000 // ★ đơn từ giá này được miễn phí ship, đổi tại đây nếu muốn
 
 export default function CheckoutPage() {
   const cart = useCart()
@@ -42,17 +42,33 @@ export default function CheckoutPage() {
     if (!address) { setGeoError('Vui lòng nhập địa chỉ trước.'); return }
     setGeoLoading(true)
     setGeoError('')
-    const loc = await geocodeAddress(address)
-    setGeoLoading(false)
-    if (!loc) {
-      setGeoError('Không tìm thấy địa chỉ này trên bản đồ. Hãy thử ghi rõ hơn (số nhà, đường, quận/huyện, tỉnh/thành).')
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(address + ', Việt Nam')}`)
+      const data = await res.json()
+      setGeoLoading(false)
+
+      if (!res.ok || data.error) {
+        setGeoError(`Lỗi định vị: ${data.error || 'không xác định'}. Bạn vẫn có thể đặt hàng, quán sẽ tính phí ship tay.`)
+        setCustomerLocation(null)
+        setDistanceKm(null)
+        return
+      }
+      if (!data || data.length === 0) {
+        setGeoError('Không tìm thấy địa chỉ này trên bản đồ. Hãy thử ghi rõ hơn (số nhà, đường, phường/xã, quận/huyện, tỉnh/thành — viết liền không viết tắt).')
+        setCustomerLocation(null)
+        setDistanceKm(null)
+        return
+      }
+      const loc = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+      setCustomerLocation(loc)
+      const km = haversineDistanceKm(SHOP_LOCATION.lat, SHOP_LOCATION.lng, loc.lat, loc.lng)
+      setDistanceKm(km)
+    } catch (e) {
+      setGeoLoading(false)
+      setGeoError('Không kết nối được dịch vụ bản đồ: ' + e.message)
       setCustomerLocation(null)
       setDistanceKm(null)
-      return
     }
-    setCustomerLocation(loc)
-    const km = haversineDistanceKm(SHOP_LOCATION.lat, SHOP_LOCATION.lng, loc.lat, loc.lng)
-    setDistanceKm(km)
   }
 
   async function applyVoucher() {
