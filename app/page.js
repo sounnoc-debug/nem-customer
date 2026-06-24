@@ -83,6 +83,11 @@ export default function Home() {
         <a href="/cart" style={{ fontSize: 20 }}>🛒</a>
       </div>
 
+      <div className="hero-banner">
+        <h2>Nem ngon mỗi ngày 🌿</h2>
+        <p>Đặt nem chua, nem nướng, combo tiện lợi — giao tận nơi, nóng giòn từng phần.</p>
+      </div>
+
       <div className="category-pills">
         <div className={`pill ${activeCat === 'all' ? 'active' : ''}`} onClick={() => setActiveCat('all')}>Tất cả</div>
         {mainCats.map((c) => (
