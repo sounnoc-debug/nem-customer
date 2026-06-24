@@ -8,7 +8,7 @@ import { SHOP_LOCATION, haversineDistanceKm, calcShippingFee, geocodeAddress } f
 
 const ShippingMap = dynamic(() => import('@/components/ShippingMap'), { ssr: false })
 
-const FREE_SHIP_THRESHOLD = 150000 // ★ đơn từ giá này được miễn phí ship, đổi tại đây nếu muốn
+const FREE_SHIP_THRESHOLD = 500000 // ★ đơn từ giá này được miễn phí ship, đổi tại đây nếu muốn
 
 export default function CheckoutPage() {
   const cart = useCart()
