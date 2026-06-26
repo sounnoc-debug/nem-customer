@@ -12,6 +12,10 @@ export default function ProfilePage() {
   const [idFile, setIdFile] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [tiers, setTiers] = useState([])
+  const [totalSpend, setTotalSpend] = useState(0)
+  const [achievements, setAchievements] = useState([])
+  const [myAchievementIds, setMyAchievementIds] = useState([])
   const router = useRouter()
 
   useEffect(() => { load() }, [])
@@ -23,12 +27,24 @@ export default function ProfilePage() {
       const { data: p } = await supabase.from('users').select('*').eq('id', data.user.id).single()
       setProfile(p)
       setBirthday(p?.birthday || '')
+
       const { data: uv } = await supabase
         .from('user_vouchers')
         .select('*, vouchers(*)')
         .eq('user_id', data.user.id)
         .eq('used', false)
       setMyVouchers((uv || []).filter((v) => v.vouchers))
+
+      const { data: t } = await supabase.from('rank_tiers').select('*').order('sort_order')
+      setTiers(t || [])
+
+      const { data: orders } = await supabase.from('orders').select('total_amount').eq('user_id', data.user.id).eq('status', 'done')
+      setTotalSpend((orders || []).reduce((s, o) => s + Number(o.total_amount || 0), 0))
+
+      const { data: allAch } = await supabase.from('achievements').select('*')
+      setAchievements(allAch || [])
+      const { data: myAch } = await supabase.from('user_achievements').select('achievement_id').eq('user_id', data.user.id)
+      setMyAchievementIds((myAch || []).map((a) => a.achievement_id))
     }
   }
 
@@ -98,17 +114,67 @@ export default function ProfilePage() {
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--chili-dark)' }}>{profile?.points ?? 0}</div>
-            <div style={{ fontSize: 12, color: '#8A7158' }}>Điểm thưởng</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--chili-dark)' }}>{totalSpend.toLocaleString('vi-VN')}đ</div>
+            <div style={{ fontSize: 12, color: '#8A7158' }}>Tổng chi tiêu</div>
           </div>
           <div className="card" style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{profile?.level || 'Thành viên'}</div>
-            <div style={{ fontSize: 12, color: '#8A7158' }}>Hạng</div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{tiers.find((t) => t.name === profile?.level)?.icon} {profile?.level || 'Thành viên'}</div>
+            <div style={{ fontSize: 12, color: '#8A7158' }}>Hạng hiện tại</div>
           </div>
         </div>
 
+        {/* ===== TIẾN TRÌNH LÊN HẠNG ===== */}
+        {(() => {
+          const sorted = [...tiers].sort((a, b) => a.min_spend - b.min_spend)
+          const currentIdx = sorted.findIndex((t) => t.name === profile?.level)
+          const next = sorted[currentIdx + 1]
+          if (!next) {
+            return (
+              <div className="card" style={{ marginBottom: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 13 }}>👑 Bạn đang ở hạng cao nhất — Huyền thoại của quán!</p>
+              </div>
+            )
+          }
+          const prevMin = sorted[currentIdx]?.min_spend || 0
+          const pct = Math.min(100, Math.round(((totalSpend - prevMin) / (next.min_spend - prevMin)) * 100))
+          return (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 12, color: '#8A7158', marginBottom: 8 }}>
+                Còn <strong>{Math.max(0, next.min_spend - totalSpend).toLocaleString('vi-VN')}đ</strong> để lên hạng {next.icon} {next.name}
+              </p>
+              <div style={{ height: 8, background: 'var(--line)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: 'var(--chili)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+          )
+        })()}
+
+        <a href="/ranking" className="card" style={{ display: 'block', marginBottom: 10 }}>🏆 Xem Bảng xếp hạng</a>
         <a href="/orders" className="card" style={{ display: 'block', marginBottom: 10 }}>🧾 Lịch sử đơn hàng</a>
         <a href="#" className="card" style={{ display: 'block', marginBottom: 10 }}>❤️ Món yêu thích</a>
+
+        {/* ===== HUY HIỆU ===== */}
+        <div className="card" style={{ marginBottom: 10 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 4 }}>🎖️ Bộ sưu tập huy hiệu</h3>
+          <p style={{ fontSize: 12, color: '#8A7158', marginBottom: 12 }}>
+            Đã đạt {myAchievementIds.length}/{achievements.length} huy hiệu
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {achievements.map((a) => {
+              const earned = myAchievementIds.includes(a.id)
+              return (
+                <div key={a.id} style={{
+                  textAlign: 'center', padding: '10px 4px', borderRadius: 12,
+                  border: `1px solid ${earned ? 'var(--chili)' : 'var(--line)'}`,
+                  background: earned ? '#FDE3D8' : '#F7F1E4', opacity: earned ? 1 : 0.5,
+                }}>
+                  <div style={{ fontSize: 26 }}>{earned ? a.icon : '🔒'}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{a.name}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {/* ===== NEM PASSPORT ===== */}
         <div className="card" style={{ marginBottom: 10 }}>
