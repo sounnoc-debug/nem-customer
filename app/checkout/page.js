@@ -18,6 +18,7 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState('cod')
   const [voucherCode, setVoucherCode] = useState('')
   const [discount, setDiscount] = useState(0)
+  const [appliedUserVoucherId, setAppliedUserVoucherId] = useState(null) // ★ chỉ có giá trị nếu voucher là cá nhân, cần đánh dấu đã dùng
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
@@ -73,10 +74,40 @@ export default function CheckoutPage() {
 
   async function applyVoucher() {
     if (!voucherCode) return
-    const { data } = await supabase.from('vouchers').select('*').eq('code', voucherCode.toUpperCase()).single()
-    if (!data) { setError('Mã giảm giá không hợp lệ.'); setDiscount(0); return }
     setError('')
-    const value = data.discount_type === 'percent' ? (cart.total * data.discount_value) / 100 : data.discount_value
+    setAppliedUserVoucherId(null)
+
+    const { data: voucher } = await supabase.from('vouchers').select('*').eq('code', voucherCode.toUpperCase()).single()
+    if (!voucher) { setError('Mã giảm giá không hợp lệ.'); setDiscount(0); return }
+
+    // Kiểm tra ngày hết hạn
+    if (voucher.expired_at && new Date(voucher.expired_at) < new Date()) {
+      setError('Mã giảm giá này đã hết hạn.')
+      setDiscount(0)
+      return
+    }
+
+    // ★ Voucher cá nhân (do Nem Passport tự tặng) — chỉ đúng người được tặng mới dùng được.
+    // Nhờ Row Level Security, nếu voucher này thuộc về người KHÁC, truy vấn dưới đây sẽ
+    // không trả về kết quả nào (bị ẩn), nên không thể đoán mã của người khác để dùng trộm.
+    if (voucher.is_personal) {
+      if (!user) { setError('Bạn cần đăng nhập để dùng voucher cá nhân này.'); setDiscount(0); return }
+      const { data: uv } = await supabase
+        .from('user_vouchers')
+        .select('*')
+        .eq('voucher_id', voucher.id)
+        .eq('used', false)
+        .maybeSingle()
+
+      if (!uv) {
+        setError('Mã này là quà riêng tặng cho 1 khách hàng cụ thể và không thuộc về tài khoản của bạn, hoặc đã được dùng rồi.')
+        setDiscount(0)
+        return
+      }
+      setAppliedUserVoucherId(uv.id)
+    }
+
+    const value = voucher.discount_type === 'percent' ? (cart.total * voucher.discount_value) / 100 : voucher.discount_value
     setDiscount(value)
   }
 
@@ -113,6 +144,11 @@ export default function CheckoutPage() {
       price: i.product.sale_price || i.product.price,
     }))
     await supabase.from('order_items').insert(orderItems)
+
+    // ★ Nếu đơn này dùng voucher cá nhân (Nem Passport), đánh dấu đã dùng để không dùng lại được
+    if (appliedUserVoucherId) {
+      await supabase.from('user_vouchers').update({ used: true }).eq('id', appliedUserVoucherId)
+    }
 
     cart.clearCart()
     setLoading(false)
@@ -157,7 +193,7 @@ export default function CheckoutPage() {
         <div className="card" style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 13, fontWeight: 600 }}>Mã giảm giá</label>
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-            <input value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="NEM10" />
+            <input value={voucherCode} onChange={(e) => { setVoucherCode(e.target.value); setDiscount(0); setAppliedUserVoucherId(null) }} placeholder="NEM10" />
             <button className="btn secondary" style={{ width: 'auto', padding: '0 16px' }} onClick={applyVoucher}>Áp dụng</button>
           </div>
         </div>
