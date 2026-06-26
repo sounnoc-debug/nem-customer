@@ -8,6 +8,10 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [authUser, setAuthUser] = useState(null)
   const [myVouchers, setMyVouchers] = useState([])
+  const [birthday, setBirthday] = useState('')
+  const [idFile, setIdFile] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const router = useRouter()
 
   useEffect(() => { load() }, [])
@@ -18,6 +22,7 @@ export default function ProfilePage() {
     if (data.user) {
       const { data: p } = await supabase.from('users').select('*').eq('id', data.user.id).single()
       setProfile(p)
+      setBirthday(p?.birthday || '')
       const { data: uv } = await supabase
         .from('user_vouchers')
         .select('*, vouchers(*)')
@@ -25,6 +30,44 @@ export default function ProfilePage() {
         .eq('used', false)
       setMyVouchers((uv || []).filter((v) => v.vouchers))
     }
+  }
+
+  function calcAge(b) {
+    if (!b) return null
+    const birth = new Date(b)
+    const now = new Date()
+    let age = now.getFullYear() - birth.getFullYear()
+    if (now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) age--
+    return age
+  }
+
+  async function handleSubmitVerification(e) {
+    e.preventDefault()
+    setSubmitError('')
+
+    if (!birthday) { setSubmitError('Vui lòng nhập ngày sinh để xác nhận độ tuổi.'); return }
+    const age = calcAge(birthday)
+    if (age < 16) { setSubmitError('Combo Sinh viên yêu cầu khách từ 16 tuổi trở lên.'); return }
+    if (!idFile) { setSubmitError('Vui lòng chọn ảnh thẻ sinh viên.'); return }
+
+    setSubmitting(true)
+    const filePath = `${authUser.id}/${Date.now()}_${idFile.name}`
+    const { error: uploadErr } = await supabase.storage.from('student-ids').upload(filePath, idFile)
+    if (uploadErr) {
+      setSubmitError('Không tải được ảnh lên: ' + uploadErr.message)
+      setSubmitting(false)
+      return
+    }
+
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({ birthday, student_id_image: filePath, student_verification_status: 'pending', student_verification_note: null })
+      .eq('id', authUser.id)
+
+    setSubmitting(false)
+    if (updateErr) { setSubmitError('Lỗi cập nhật hồ sơ: ' + updateErr.message); return }
+    setIdFile(null)
+    load()
   }
 
   async function handleLogout() {
@@ -106,6 +149,42 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
+
+        {/* ===== XÁC MINH SINH VIÊN ===== */}
+        <div className="card" style={{ marginBottom: 10 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 6 }}>🎓 Xác minh sinh viên</h3>
+          <p style={{ fontSize: 12, color: '#8A7158', marginBottom: 12 }}>
+            Cần xác minh độ tuổi + thẻ sinh viên để đặt được các phần trong nhóm "Combo Sinh viên".
+          </p>
+
+          {profile?.student_verification_status === 'approved' && (
+            <div className="ticket-status status-done">✅ Đã xác minh — bạn có thể đặt Combo Sinh viên</div>
+          )}
+
+          {profile?.student_verification_status === 'pending' && (
+            <div className="ticket-status status-pending">⏳ Đang chờ quán duyệt (thường trong 24h)</div>
+          )}
+
+          {(profile?.student_verification_status === 'none' || profile?.student_verification_status === 'rejected' || !profile?.student_verification_status) && (
+            <>
+              {profile?.student_verification_status === 'rejected' && (
+                <p style={{ fontSize: 12, color: 'var(--chili)', marginBottom: 10 }}>
+                  ❌ Yêu cầu trước đã bị từ chối{profile?.student_verification_note ? `: ${profile.student_verification_note}` : '.'} Vui lòng nộp lại.
+                </p>
+              )}
+              <form onSubmit={handleSubmitVerification}>
+                <label style={{ fontSize: 13, fontWeight: 600 }}>Ngày sinh (xác nhận độ tuổi)</label>
+                <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} required style={{ marginTop: 6, marginBottom: 12 }} />
+
+                <label style={{ fontSize: 13, fontWeight: 600 }}>Ảnh thẻ sinh viên (mặt trước, rõ thông tin)</label>
+                <input type="file" accept="image/*" onChange={(e) => setIdFile(e.target.files[0])} required style={{ marginTop: 6, marginBottom: 12 }} />
+
+                {submitError && <p className="error-text">{submitError}</p>}
+                <button className="btn" disabled={submitting}>{submitting ? 'Đang gửi...' : 'Gửi yêu cầu xác minh'}</button>
+              </form>
+            </>
+          )}
+        </div>
 
         <button className="btn secondary" style={{ marginTop: 16 }} onClick={handleLogout}>Đăng xuất</button>
       </div>

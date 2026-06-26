@@ -143,7 +143,19 @@ export default function CheckoutPage() {
       quantity: i.quantity,
       price: i.product.sale_price || i.product.price,
     }))
-    await supabase.from('order_items').insert(orderItems)
+    const { error: itemsErr } = await supabase.from('order_items').insert(orderItems)
+
+    if (itemsErr) {
+      // Đơn đã tạo nhưng món bị chặn -> xóa đơn rác để khách thử lại
+      await supabase.from('orders').delete().eq('id', order.id)
+      setLoading(false)
+      if (itemsErr.message?.includes('STUDENT_VERIFICATION_REQUIRED')) {
+        setError('Giỏ hàng của bạn có món "Combo Sinh viên" nhưng tài khoản chưa được xác minh sinh viên. Vui lòng xác minh ở mục Tài khoản trước, hoặc bỏ món này khỏi giỏ.')
+      } else {
+        setError('Có lỗi khi tạo đơn hàng: ' + itemsErr.message)
+      }
+      return
+    }
 
     // ★ Nếu đơn này dùng voucher cá nhân (Nem Passport), đánh dấu đã dùng để không dùng lại được
     if (appliedUserVoucherId) {
