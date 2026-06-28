@@ -27,6 +27,8 @@ export default function CheckoutPage() {
   const [distanceKm, setDistanceKm] = useState(null)
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState('')
+  const [categories, setCategories] = useState([])
+  const [showStudentNotice, setShowStudentNotice] = useState(false)
 
   const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ'
 
@@ -35,8 +37,14 @@ export default function CheckoutPage() {
   const shippingFee = isFreeShip ? 0 : distanceFee
   const finalTotal = cart.total + shippingFee - discount
 
+  const hasStudentComboItem = cart.items.some((i) => {
+    const cat = categories.find((c) => c.id === i.product.category_id)
+    return cat?.name === 'Combo Sinh viên'
+  })
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.from('categories').select('*').then(({ data }) => setCategories(data || []))
   }, [])
 
   async function handleLocate() {
@@ -111,9 +119,20 @@ export default function CheckoutPage() {
     setDiscount(value)
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!address || !phone) { setError('Vui lòng nhập đầy đủ địa chỉ và số điện thoại.'); return }
     if (!user) { setError('Bạn cần đăng nhập trước khi đặt hàng.'); return }
+
+    // ★ Đơn có món Combo Sinh viên -> bắt buộc xác nhận lại trước khi đặt
+    if (hasStudentComboItem) {
+      setShowStudentNotice(true)
+      return
+    }
+    placeOrder()
+  }
+
+  async function placeOrder() {
+    setShowStudentNotice(false)
     setLoading(true)
 
     const { data: order, error: orderErr } = await supabase
@@ -146,18 +165,12 @@ export default function CheckoutPage() {
     const { error: itemsErr } = await supabase.from('order_items').insert(orderItems)
 
     if (itemsErr) {
-      // Đơn đã tạo nhưng món bị chặn -> xóa đơn rác để khách thử lại
       await supabase.from('orders').delete().eq('id', order.id)
       setLoading(false)
-      if (itemsErr.message?.includes('STUDENT_VERIFICATION_REQUIRED')) {
-        setError('Giỏ hàng của bạn có món "Combo Sinh viên" nhưng tài khoản chưa được xác minh sinh viên. Vui lòng xác minh ở mục Tài khoản trước, hoặc bỏ món này khỏi giỏ.')
-      } else {
-        setError('Có lỗi khi tạo đơn hàng: ' + itemsErr.message)
-      }
+      setError('Có lỗi khi tạo đơn hàng: ' + itemsErr.message)
       return
     }
 
-    // ★ Nếu đơn này dùng voucher cá nhân (Nem Passport), đánh dấu đã dùng để không dùng lại được
     if (appliedUserVoucherId) {
       await supabase.from('user_vouchers').update({ used: true }).eq('id', appliedUserVoucherId)
     }
@@ -240,6 +253,28 @@ export default function CheckoutPage() {
           {loading ? 'Đang đặt hàng...' : 'Xác nhận đặt hàng'}
         </button>
       </div>
+
+      {/* ===== POPUP XÁC NHẬN ĐƠN COMBO SINH VIÊN ===== */}
+      {showStudentNotice && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(43,27,18,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 20,
+        }}>
+          <div className="card" style={{ maxWidth: 360 }}>
+            <h3 style={{ fontSize: 17, marginBottom: 10 }}>🎓 Xác nhận đơn Sinh viên</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+              Đơn hàng bạn đã đặt thuộc đơn hàng khuyến mãi dành cho tệp khách hàng đang là sinh viên/học sinh,
+              vui lòng xác nhận lại và khi chúng tôi giao hàng tới sẽ kiểm tra lại thẻ sinh viên/CCCD.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn secondary" onClick={() => setShowStudentNotice(false)}>Hủy</button>
+              <button className="btn" disabled={loading} onClick={placeOrder}>
+                {loading ? 'Đang đặt...' : 'Xác nhận đặt hàng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

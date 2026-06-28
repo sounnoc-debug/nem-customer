@@ -13,7 +13,6 @@ export default function ProductDetail() {
   const [qty, setQty] = useState(1)
   const [note, setNote] = useState('')
   const [added, setAdded] = useState(false)
-  const [verifyStatus, setVerifyStatus] = useState(null) // trạng thái xác minh của khách đang đăng nhập
   const cart = useCart()
 
   useEffect(() => { load() }, [id])
@@ -24,25 +23,14 @@ export default function ProductDetail() {
     setProduct(p)
     setCategoryName(p?.categories?.name || '')
     setReviews(r || [])
-
-    const { data: authData } = await supabase.auth.getUser()
-    if (authData.user) {
-      const { data: profile } = await supabase.from('users').select('student_verification_status').eq('id', authData.user.id).single()
-      setVerifyStatus(profile?.student_verification_status || 'none')
-    } else {
-      setVerifyStatus('none')
-    }
   }
 
   if (!product) return <div className="page">Đang tải...</div>
 
   const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ'
   const isStudentCombo = categoryName === 'Combo Sinh viên'
-  const isVerified = verifyStatus === 'approved'
-  const blocked = isStudentCombo && !isVerified
 
   function handleAdd() {
-    if (blocked) return
     cart.addItem(product, qty, note)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
@@ -79,21 +67,15 @@ export default function ProductDetail() {
         </div>
 
         {isStudentCombo && (
-          <div className="card" style={{ marginTop: 16, background: blocked ? '#FDE3D8' : '#DCEBDA' }}>
-            {isVerified ? (
-              <span style={{ fontSize: 13 }}>✅ Bạn đã xác minh sinh viên — có thể đặt món này.</span>
-            ) : (
-              <span style={{ fontSize: 13 }}>
-                🎓 Phần này chỉ dành cho sinh viên đã xác minh.{' '}
-                <a href="/profile" style={{ textDecoration: 'underline', fontWeight: 700 }}>Xác minh ngay tại Tài khoản</a>
-                {verifyStatus === 'pending' && ' (yêu cầu của bạn đang chờ duyệt)'}
-              </span>
-            )}
+          <div className="card" style={{ marginTop: 16, background: '#FBE9CF' }}>
+            <span style={{ fontSize: 13 }}>
+              🎓 Phần này dành riêng cho khách đang là sinh viên/học sinh — quán sẽ kiểm tra lại thẻ sinh viên/CCCD khi giao hàng.
+            </span>
           </div>
         )}
 
-        <button className="btn" style={{ marginTop: 16 }} onClick={handleAdd} disabled={blocked}>
-          {blocked ? '🔒 Cần xác minh sinh viên' : added ? '✓ Đã thêm vào giỏ' : `Thêm vào giỏ — ${fmt((product.sale_price || product.price) * qty)}`}
+        <button className="btn" style={{ marginTop: 16 }} onClick={handleAdd}>
+          {added ? '✓ Đã thêm vào giỏ' : `Thêm vào giỏ — ${fmt((product.sale_price || product.price) * qty)}`}
         </button>
 
         <h3 style={{ fontSize: 16, marginTop: 24, marginBottom: 10 }}>Đánh giá</h3>

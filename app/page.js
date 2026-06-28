@@ -18,7 +18,6 @@ export default function Home() {
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [activeCat, setActiveCat] = useState('all') // 'all' | 'combo' | category.id
-  const [isVerifiedStudent, setIsVerifiedStudent] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -27,12 +26,6 @@ export default function Home() {
     const { data: p } = await supabase.from('products').select('*').order('created_at', { ascending: false })
     setCategories(c || [])
     setProducts(p || [])
-
-    const { data: authData } = await supabase.auth.getUser()
-    if (authData.user) {
-      const { data: profile } = await supabase.from('users').select('student_verification_status').eq('id', authData.user.id).single()
-      setIsVerifiedStudent(profile?.student_verification_status === 'approved')
-    }
   }
 
   const fmt = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ'
@@ -63,13 +56,12 @@ export default function Home() {
   function ProductCard({ p }) {
     const cat = catById(p.category_id)
     const isStudentCombo = cat?.name === 'Combo Sinh viên'
-    const locked = isStudentCombo && !isVerifiedStudent
     return (
       <a href={`/product/${p.id}`} className="product-card" style={{ position: 'relative' }}>
         <img className="img" src={p.image || 'https://placehold.co/300x220?text=Nem'} alt={p.name} />
-        {locked && (
-          <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(43,27,18,0.75)', color: 'white', fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 999 }}>
-            🔒 Cần xác minh
+        {isStudentCombo && (
+          <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--herb)', color: 'white', fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 999 }}>
+            🎓 Sinh viên
           </div>
         )}
         <div className="info">
